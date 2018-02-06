@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi"
 	"github.com/google/go-cmp/cmp"
+	"github.com/gorilla/mux"
 )
 
 // newRwquest is used to generate the request for the various test cases
@@ -17,7 +20,7 @@ func newRequest(method, urlStr string, body io.Reader) *http.Request {
 
 func TestQueryParams(t *testing.T) {
 	type item struct {
-		Name string `path:"name"`
+		Name string `form:"name"`
 	}
 
 	tc := []struct {
@@ -42,10 +45,198 @@ func TestQueryParams(t *testing.T) {
 
 	for _, tt := range tc {
 		t.Run(tt.name, func(t *testing.T) {
-			QueryParams([]string{"name"})(tt.container, tt.req)
+			QueryParams("name")(tt.container, tt.req)
 			if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 				t.Errorf("%s: -got +want\n%s", tt.name, diff)
 			}
+		})
+	}
+}
+
+func TestMagic(t *testing.T) {
+	type item struct {
+		ID    int     `path:"id"`
+		Name  string  `form:"name"`
+		Pet   string  `form:"pet"`
+		Money float64 `json:"money"`
+	}
+
+	tc := []struct {
+		name      string
+		req       *http.Request
+		method    string
+		route     string
+		decoders  []Decoder
+		container interface{}
+		output    interface{}
+		hasErr    bool
+	}{
+		{
+			name:   "POST with route id",
+			req:    newRequest("POST", "/foo/2", bytes.NewBufferString(`{"money": 12.34}`)),
+			method: "POST",
+			route:  "/foo/{id}",
+			decoders: []Decoder{
+				ChiRouter("id"),
+				JSON,
+			},
+			container: &item{},
+			output: &item{
+				ID:    2,
+				Name:  "",
+				Money: 12.34,
+			},
+			hasErr: false,
+		},
+		{
+			name:   "GET with query param",
+			req:    newRequest("GET", "/foo/2?pet=cat", nil),
+			method: "GET",
+			route:  "/foo/{id:[0-9]+}",
+			decoders: []Decoder{
+				QueryParams("pet"),
+				ChiRouter("id"),
+			},
+			container: &item{},
+			output: &item{
+				ID:  2,
+				Pet: "cat",
+			},
+			hasErr: false,
+		},
+		{
+			name:   "POST with query param and route id",
+			req:    newRequest("GET", "/foo/2?pet=cat&name=bob", bytes.NewBufferString(`{"money": "12.34"}`)),
+			method: "POST",
+			route:  "/foo/{id:[0-9]+}",
+			decoders: []Decoder{
+				QueryParams("pet", "name"),
+				ChiRouter("id"),
+				JSON,
+			},
+			container: &item{},
+			output: &item{
+				ID:    2,
+				Money: 12.34,
+				Pet:   "cat",
+				Name:  "bob",
+			},
+			hasErr: false,
+		},
+		{
+			name:   "Nil container",
+			req:    newRequest("GET", "/foo/2?pet=cat", nil),
+			method: "GET",
+			route:  "/foo/{id:[0-9]+}",
+			decoders: []Decoder{
+				QueryParams("pet"),
+				ChiRouter("id"),
+			},
+			container: nil,
+			output:    nil,
+			hasErr:    true,
+		},
+	}
+
+	for _, tt := range tc {
+		t.Run(tt.name, func(t *testing.T) {
+
+			r := chi.NewRouter()
+			r.MethodFunc(tt.method, tt.route, func(w http.ResponseWriter, r *http.Request) {
+				err := Magic(tt.container, r, tt.decoders...)
+
+				if diff := cmp.Diff(tt.container, tt.output); diff != "" {
+					t.Errorf("%s: -got +want\n%s", tt.name, diff)
+				}
+
+				if (err == nil) == tt.hasErr {
+					t.Errorf("%s: expect err to be %t, got: %s", tt.name, tt.hasErr, err)
+				}
+			})
+
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, tt.req)
+		})
+
+	}
+}
+
+func TestChiRouter(t *testing.T) {
+	type item struct {
+		ID     int `path:"id"`
+		TeamID int `path:"team_id"`
+	}
+
+	tc := []struct {
+		name      string
+		route     string
+		fields    []string
+		req       *http.Request
+		container interface{}
+		output    interface{}
+	}{
+		{
+			name:      "numeric path",
+			route:     "/teams/{id}",
+			fields:    []string{"id"},
+			req:       newRequest("GET", "/teams/2", nil),
+			container: &item{},
+			output:    &item{ID: 2},
+		},
+	}
+
+	for _, tt := range tc {
+		t.Run(tt.name, func(t *testing.T) {
+			r := chi.NewRouter()
+			r.HandleFunc(tt.route, func(w http.ResponseWriter, r *http.Request) {
+				ChiRouter(tt.fields...)(tt.container, r)
+
+				if diff := cmp.Diff(tt.container, tt.output); diff != "" {
+					t.Errorf("%s: -got +want\n%s", tt.name, diff)
+				}
+			})
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, tt.req)
+		})
+	}
+}
+
+func TestMuxRouter(t *testing.T) {
+	type item struct {
+		ID     int `path:"id"`
+		TeamID int `path:"team_id"`
+	}
+
+	tc := []struct {
+		name      string
+		route     string
+		fields    []string
+		req       *http.Request
+		container interface{}
+		output    interface{}
+	}{
+		{
+			name:      "numeric path",
+			route:     "/teams/{id}",
+			fields:    []string{"id"},
+			req:       newRequest("GET", "/teams/2", nil),
+			container: &item{},
+			output:    &item{ID: 2},
+		},
+	}
+
+	for _, tt := range tc {
+		t.Run(tt.name, func(t *testing.T) {
+			r := mux.NewRouter()
+			r.HandleFunc(tt.route, func(w http.ResponseWriter, r *http.Request) {
+				MuxRouter(tt.fields...)(tt.container, r)
+
+				if diff := cmp.Diff(tt.container, tt.output); diff != "" {
+					t.Errorf("%s: -got +want\n%s", tt.name, diff)
+				}
+			})
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, tt.req)
 		})
 	}
 }
@@ -91,7 +282,8 @@ func TestJSON(t *testing.T) {
 			if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 				t.Errorf("%s: -got +want\n%s", tt.name, diff)
 			}
-			if (tt.hasErr && err == nil) || (!tt.hasErr && err != nil) {
+
+			if (err == nil) == tt.hasErr {
 				t.Errorf("%s: expect err to be %t, got: %s", tt.name, tt.hasErr, err)
 			}
 		})
@@ -275,7 +467,7 @@ func TestParseToStruct(t *testing.T) {
 			if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 				t.Errorf("%s: -got +want\n%s", tt.name, diff)
 			}
-			if (tt.hasErr && err == nil) || (!tt.hasErr && err != nil) {
+			if (err == nil) == tt.hasErr {
 				t.Errorf("%s: expect err to be %t, got: %s", tt.name, tt.hasErr, err)
 			}
 		})

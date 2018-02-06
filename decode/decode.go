@@ -19,9 +19,12 @@ const (
 	pathTag = "path"
 )
 
+// Decoder is an abstraction to decode info from a request into a container
+// container always should be a pointer to a struct
 type Decoder func(container interface{}, r *http.Request) error
 
-func MuxRouter(fields []string) Decoder {
+// MuxRouter extracts the given fields from gorilla mux route
+func MuxRouter(fields ...string) Decoder {
 	return func(container interface{}, r *http.Request) error {
 		values := make(map[string]string)
 
@@ -34,7 +37,8 @@ func MuxRouter(fields []string) Decoder {
 	}
 }
 
-func ChiRouter(fields []string) Decoder {
+// ChiRouter extracts the given fields from chi route
+func ChiRouter(fields ...string) Decoder {
 	return func(container interface{}, r *http.Request) error {
 		values := make(map[string]string)
 
@@ -46,7 +50,8 @@ func ChiRouter(fields []string) Decoder {
 	}
 }
 
-func QueryParams(fields []string) Decoder {
+// QueryParams extract the given fields from GET query params
+func QueryParams(fields ...string) Decoder {
 	return func(container interface{}, r *http.Request) error {
 		values := make(map[string]string)
 
@@ -54,10 +59,11 @@ func QueryParams(fields []string) Decoder {
 			values[k] = r.URL.Query().Get(k)
 		}
 
-		return ParseToStruct(pathTag, values, container)
+		return ParseToStruct(formTag, values, container)
 	}
 }
 
+// JSON unmarshal
 func JSON(container interface{}, r *http.Request) error {
 	if r.Body == nil {
 		return errors.New("empty request body")
@@ -66,6 +72,9 @@ func JSON(container interface{}, r *http.Request) error {
 	return json.NewDecoder(r.Body).Decode(container)
 }
 
+// Magic apply a series of decoders in the order they are
+// it is, decoder 1,2,3 will be applied in order 1,2,3
+// container must be a pointer to a struct
 func Magic(container interface{}, r *http.Request, decoders ...Decoder) error {
 	var err error
 
@@ -97,6 +106,8 @@ const (
 var sliceOfInts = reflect.TypeOf([]int(nil))
 var sliceOfStrings = reflect.TypeOf([]string(nil))
 
+// ParseToStruct converts a map of strings to its reference on a struct, it will
+// try to convert the data into the type defined in the struct field
 func ParseToStruct(structTag string, form map[string]string, container interface{}) error {
 	if form == nil {
 		return nil
@@ -119,10 +130,6 @@ func ParseToStruct(structTag string, form map[string]string, container interface
 
 		fieldT := objT.Field(i)
 		if fieldT.Anonymous && fieldT.Type.Kind() == reflect.Struct {
-			// err := ParseToStruct(structTag, form, fieldT.Type, fieldV)
-			// if err != nil {
-			// 	return err
-			// }
 			continue
 		}
 
