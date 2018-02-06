@@ -23,44 +23,38 @@ const (
 // container always should be a pointer to a struct
 type Decoder func(container interface{}, r *http.Request) error
 
-// MuxRouter extracts the given fields from gorilla mux route
-func MuxRouter(fields ...string) Decoder {
-	return func(container interface{}, r *http.Request) error {
-		values := make(map[string]string)
-
-		vars := mux.Vars(r)
-		for _, k := range fields {
-			values[k] = vars[k]
-		}
-
-		return ParseToStruct(pathTag, values, container)
-	}
+// MuxRouter extracts fields from gorilla mux route
+func MuxRouter(container interface{}, r *http.Request) error {
+	values := mux.Vars(r)
+	return ParseToStruct(pathTag, values, container)
 }
 
-// ChiRouter extracts the given fields from chi route
-func ChiRouter(fields ...string) Decoder {
-	return func(container interface{}, r *http.Request) error {
-		values := make(map[string]string)
+// ChiRouter extracts fields from chi router
+func ChiRouter(container interface{}, r *http.Request) error {
+	values := make(map[string]string)
 
-		for _, k := range fields {
-			values[k] = chi.URLParam(r, k)
-		}
-
-		return ParseToStruct(pathTag, values, container)
+	rctx := chi.RouteContext(r.Context())
+	if rctx == nil {
+		return nil
 	}
+
+	for i, k := range rctx.URLParams.Keys {
+		values[k] = rctx.URLParams.Values[i]
+	}
+
+	return ParseToStruct(pathTag, values, container)
 }
 
-// QueryParams extract the given fields from GET query params
-func QueryParams(fields ...string) Decoder {
-	return func(container interface{}, r *http.Request) error {
-		values := make(map[string]string)
+// QueryParams extract fields from GET query params
+func QueryParams(container interface{}, r *http.Request) error {
+	values := make(map[string]string)
 
-		for _, k := range fields {
-			values[k] = r.URL.Query().Get(k)
-		}
-
-		return ParseToStruct(formTag, values, container)
+	items := r.URL.Query()
+	for k := range items {
+		values[k] = items.Get(k)
 	}
+
+	return ParseToStruct(formTag, values, container)
 }
 
 // JSON unmarshal

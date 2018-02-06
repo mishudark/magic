@@ -45,7 +45,7 @@ func TestQueryParams(t *testing.T) {
 
 	for _, tt := range tc {
 		t.Run(tt.name, func(t *testing.T) {
-			QueryParams("name")(tt.container, tt.req)
+			QueryParams(tt.container, tt.req)
 			if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 				t.Errorf("%s: -got +want\n%s", tt.name, diff)
 			}
@@ -77,7 +77,7 @@ func TestMagic(t *testing.T) {
 			method: "POST",
 			route:  "/foo/{id}",
 			decoders: []Decoder{
-				ChiRouter("id"),
+				ChiRouter,
 				JSON,
 			},
 			container: &item{},
@@ -94,8 +94,8 @@ func TestMagic(t *testing.T) {
 			method: "GET",
 			route:  "/foo/{id:[0-9]+}",
 			decoders: []Decoder{
-				QueryParams("pet"),
-				ChiRouter("id"),
+				QueryParams,
+				ChiRouter,
 			},
 			container: &item{},
 			output: &item{
@@ -110,8 +110,8 @@ func TestMagic(t *testing.T) {
 			method: "POST",
 			route:  "/foo/{id:[0-9]+}",
 			decoders: []Decoder{
-				QueryParams("pet", "name"),
-				ChiRouter("id"),
+				QueryParams,
+				ChiRouter,
 				JSON,
 			},
 			container: &item{},
@@ -129,8 +129,8 @@ func TestMagic(t *testing.T) {
 			method: "GET",
 			route:  "/foo/{id:[0-9]+}",
 			decoders: []Decoder{
-				QueryParams("pet"),
-				ChiRouter("id"),
+				QueryParams,
+				ChiRouter,
 			},
 			container: nil,
 			output:    nil,
@@ -170,7 +170,6 @@ func TestChiRouter(t *testing.T) {
 	tc := []struct {
 		name      string
 		route     string
-		fields    []string
 		req       *http.Request
 		container interface{}
 		output    interface{}
@@ -178,7 +177,6 @@ func TestChiRouter(t *testing.T) {
 		{
 			name:      "numeric path",
 			route:     "/teams/{id}",
-			fields:    []string{"id"},
 			req:       newRequest("GET", "/teams/2", nil),
 			container: &item{},
 			output:    &item{ID: 2},
@@ -189,7 +187,7 @@ func TestChiRouter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := chi.NewRouter()
 			r.HandleFunc(tt.route, func(w http.ResponseWriter, r *http.Request) {
-				ChiRouter(tt.fields...)(tt.container, r)
+				ChiRouter(tt.container, r)
 
 				if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 					t.Errorf("%s: -got +want\n%s", tt.name, diff)
@@ -210,7 +208,6 @@ func TestMuxRouter(t *testing.T) {
 	tc := []struct {
 		name      string
 		route     string
-		fields    []string
 		req       *http.Request
 		container interface{}
 		output    interface{}
@@ -218,7 +215,6 @@ func TestMuxRouter(t *testing.T) {
 		{
 			name:      "numeric path",
 			route:     "/teams/{id}",
-			fields:    []string{"id"},
 			req:       newRequest("GET", "/teams/2", nil),
 			container: &item{},
 			output:    &item{ID: 2},
@@ -229,7 +225,7 @@ func TestMuxRouter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := mux.NewRouter()
 			r.HandleFunc(tt.route, func(w http.ResponseWriter, r *http.Request) {
-				MuxRouter(tt.fields...)(tt.container, r)
+				MuxRouter(tt.container, r)
 
 				if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 					t.Errorf("%s: -got +want\n%s", tt.name, diff)
