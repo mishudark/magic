@@ -20,6 +20,19 @@ const (
 
 type Decoder func(container interface{}, r *http.Request) error
 
+func MuxRouter(fields []string) Decoder {
+	return func(container interface{}, r *http.Request) error {
+		values := make(map[string]string)
+
+		vars := mux.Vars(r)
+		for _, k := range fields {
+			values[k] = vars[k]
+		}
+
+		return ParseToStruct(pathTag, values, container)
+	}
+}
+
 func ChiRouter(fields []string) Decoder {
 	return func(container interface{}, r *http.Request) error {
 		values := make(map[string]string)
