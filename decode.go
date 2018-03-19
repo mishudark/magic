@@ -100,22 +100,7 @@ const (
 var sliceOfInts = reflect.TypeOf([]int(nil))
 var sliceOfStrings = reflect.TypeOf([]string(nil))
 
-// ParseToStruct converts a map of strings to its reference on a struct, it will
-// try to convert the data into the type defined in the struct field
-func ParseToStruct(structTag string, form map[string]string, container interface{}) error {
-	if form == nil {
-		return nil
-	}
-
-	objT := reflect.TypeOf(container)
-	objV := reflect.ValueOf(container)
-	if container == nil || !isStructPtr(objT) {
-		return fmt.Errorf("%v must be  a struct pointer", container)
-	}
-
-	objT = objT.Elem()
-	objV = objV.Elem()
-
+func parseToStruct(structTag string, form map[string]string, objT reflect.Type, objV reflect.Value) error {
 	for i := 0; i < objT.NumField(); i++ {
 		fieldV := objV.Field(i)
 		if !fieldV.CanSet() {
@@ -124,6 +109,10 @@ func ParseToStruct(structTag string, form map[string]string, container interface
 
 		fieldT := objT.Field(i)
 		if fieldT.Anonymous && fieldT.Type.Kind() == reflect.Struct {
+			err := parseToStruct(structTag, form, fieldT.Type, fieldV)
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -229,6 +218,25 @@ func ParseToStruct(structTag string, form map[string]string, container interface
 		}
 	}
 	return nil
+}
+
+// ParseToStruct converts a map of strings to its reference on a struct, it will
+// try to convert the data into the type defined in the struct field
+func ParseToStruct(structTag string, form map[string]string, container interface{}) error {
+	if form == nil {
+		return nil
+	}
+
+	objT := reflect.TypeOf(container)
+	objV := reflect.ValueOf(container)
+	if container == nil || !isStructPtr(objT) {
+		return fmt.Errorf("%v must be  a struct pointer", container)
+	}
+
+	objT = objT.Elem()
+	objV = objV.Elem()
+
+	return parseToStruct(structTag, form, objT, objV)
 }
 
 func isStructPtr(t reflect.Type) bool {
