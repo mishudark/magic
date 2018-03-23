@@ -33,6 +33,11 @@ func MuxRouter(container interface{}, r *http.Request) error {
 func ChiRouter(container interface{}, r *http.Request) error {
 	values := make(map[string]string)
 
+	chiCtx := r.Context().Value(chi.RouteCtxKey)
+	if chiCtx == nil {
+		return nil
+	}
+
 	rctx := chi.RouteContext(r.Context())
 	if rctx == nil {
 		return nil
