@@ -47,15 +47,15 @@ func magicHandler(w http.ResponseWriter, r *http.Request) {
 For sure you can create shortcuts to common tasks
 
 ```go
-func decodeGetRequest(container interface{}, r *http.Request) error {
-    return decode.Magic(container, r,
+func decodeGetRequest(r *http.Request, container interface{}) error {
+    return decode.Magic(r, container,
         decode.ChiRouter,
         decode.QueryParams,
     )
 }
 
-func decodePostRequest(container interface{}, r *http.Request) error {
-    return decode.Magic(container, r,
+func decodePostRequest(r *http.Request, container interface{}) error {
+    return decode.Magic(r, container,
         decode.JSON,
         decode.ChiRouter,
     )
@@ -66,6 +66,6 @@ func decodePostRequest(container interface{}, r *http.Request) error {
 Decoder is an abstraction to decode info from a request into a container, container always should be a pointer to a struct
 
 ```go
-type Decoder func(container interface{}, r *http.Request) error
+type Decoder func(r *http.Request, container interface{}) error
 
 ```

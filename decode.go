@@ -21,16 +21,16 @@ const (
 
 // Decoder is an abstraction to decode info from a request into a container
 // container always should be a pointer to a struct
-type Decoder func(container interface{}, r *http.Request) error
+type Decoder func(r *http.Request, container interface{}) error
 
 // MuxRouter extracts fields from gorilla mux route
-func MuxRouter(container interface{}, r *http.Request) error {
+func MuxRouter(r *http.Request, container interface{}) error {
 	values := mux.Vars(r)
 	return ParseToStruct(pathTag, values, container)
 }
 
 // ChiRouter extracts fields from chi router
-func ChiRouter(container interface{}, r *http.Request) error {
+func ChiRouter(r *http.Request, container interface{}) error {
 	values := make(map[string]string)
 
 	chiCtx := r.Context().Value(chi.RouteCtxKey)
@@ -51,7 +51,7 @@ func ChiRouter(container interface{}, r *http.Request) error {
 }
 
 // QueryParams extract fields from GET query params
-func QueryParams(container interface{}, r *http.Request) error {
+func QueryParams(r *http.Request, container interface{}) error {
 	values := make(map[string]string)
 
 	items := r.URL.Query()
@@ -63,7 +63,7 @@ func QueryParams(container interface{}, r *http.Request) error {
 }
 
 // JSON unmarshal
-func JSON(container interface{}, r *http.Request) error {
+func JSON(r *http.Request, container interface{}) error {
 	if r.Body == nil {
 		return errors.New("empty request body")
 	}
@@ -74,7 +74,7 @@ func JSON(container interface{}, r *http.Request) error {
 // Magic apply a series of decoders in the order they are
 // it is, decoder 1,2,3 will be applied in order 1,2,3
 // container must be a pointer to a struct
-func Magic(container interface{}, r *http.Request, decoders ...Decoder) error {
+func Magic(r *http.Request, container interface{}, decoders ...Decoder) error {
 	var err error
 
 	objT := reflect.TypeOf(container)
@@ -87,7 +87,7 @@ func Magic(container interface{}, r *http.Request, decoders ...Decoder) error {
 			continue
 		}
 
-		if err = decoder(container, r); err != nil {
+		if err = decoder(r, container); err != nil {
 			return err
 		}
 	}

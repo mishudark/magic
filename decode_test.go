@@ -45,7 +45,7 @@ func TestQueryParams(t *testing.T) {
 
 	for _, tt := range tc {
 		t.Run(tt.name, func(t *testing.T) {
-			QueryParams(tt.container, tt.req)
+			QueryParams(tt.req, tt.container)
 			if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 				t.Errorf("%s: -got +want\n%s", tt.name, diff)
 			}
@@ -143,7 +143,7 @@ func TestMagic(t *testing.T) {
 
 			r := chi.NewRouter()
 			r.MethodFunc(tt.method, tt.route, func(w http.ResponseWriter, r *http.Request) {
-				err := Magic(tt.container, r, tt.decoders...)
+				err := Magic(r, tt.container, tt.decoders...)
 
 				if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 					t.Errorf("%s: -got +want\n%s", tt.name, diff)
@@ -187,7 +187,7 @@ func TestChiRouter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := chi.NewRouter()
 			r.HandleFunc(tt.route, func(w http.ResponseWriter, r *http.Request) {
-				ChiRouter(tt.container, r)
+				ChiRouter(r, tt.container)
 
 				if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 					t.Errorf("%s: -got +want\n%s", tt.name, diff)
@@ -225,7 +225,7 @@ func TestMuxRouter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := mux.NewRouter()
 			r.HandleFunc(tt.route, func(w http.ResponseWriter, r *http.Request) {
-				MuxRouter(tt.container, r)
+				MuxRouter(r, tt.container)
 
 				if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 					t.Errorf("%s: -got +want\n%s", tt.name, diff)
@@ -274,7 +274,7 @@ func TestJSON(t *testing.T) {
 
 	for _, tt := range tc {
 		t.Run(tt.name, func(t *testing.T) {
-			err := JSON(tt.container, tt.req)
+			err := JSON(tt.req, tt.container)
 			if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 				t.Errorf("%s: -got +want\n%s", tt.name, diff)
 			}
