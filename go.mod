@@ -1,4 +1,4 @@
-module github.com/mishudark/decode
+module github.com/mishudark/magic
 
 go 1.14
 
