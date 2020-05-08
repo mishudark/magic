@@ -1,4 +1,4 @@
-package decode
+package magic
 
 import (
 	"encoding/json"
@@ -71,10 +71,10 @@ func JSON(r *http.Request, container interface{}) error {
 	return json.NewDecoder(r.Body).Decode(container)
 }
 
-// Magic apply a series of decoders in the order they are
+// Decode apply a series of decoders in the order they are
 // it is, decoder 1,2,3 will be applied in order 1,2,3
 // container must be a pointer to a struct
-func Magic(r *http.Request, container interface{}, decoders ...Decoder) error {
+func Decode(r *http.Request, container interface{}, decoders ...Decoder) error {
 	var err error
 
 	objT := reflect.TypeOf(container)

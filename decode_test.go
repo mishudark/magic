@@ -1,4 +1,4 @@
-package decode
+package magic
 
 import (
 	"bytes"
@@ -143,7 +143,7 @@ func TestMagic(t *testing.T) {
 
 			r := chi.NewRouter()
 			r.MethodFunc(tt.method, tt.route, func(w http.ResponseWriter, r *http.Request) {
-				err := Magic(r, tt.container, tt.decoders...)
+				err := Decode(r, tt.container, tt.decoders...)
 
 				if diff := cmp.Diff(tt.container, tt.output); diff != "" {
 					t.Errorf("%s: -got +want\n%s", tt.name, diff)
