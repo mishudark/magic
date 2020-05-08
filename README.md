@@ -32,10 +32,10 @@ Use the needed decoders with `decode.Magic`
 func magicHandler(w http.ResponseWriter, r *http.Request) {
     var payload item
 
-    err := decode.Magic(&payload, r,
-        decode.JSON,
-        decode.ChiRouter,
-        decode.QueryParams,
+    err := magic.Decode(&payload, r,
+        magic.JSON,
+        magic.ChiRouter,
+        magic.QueryParams,
     )
 
     if err != nil {
@@ -48,16 +48,16 @@ For sure you can create shortcuts to common tasks
 
 ```go
 func decodeGetRequest(r *http.Request, container interface{}) error {
-    return decode.Magic(r, container,
-        decode.ChiRouter,
-        decode.QueryParams,
+    return decode.Decode(r, container,
+        magic.ChiRouter,
+        magic.QueryParams,
     )
 }
 
 func decodePostRequest(r *http.Request, container interface{}) error {
-    return decode.Magic(r, container,
-        decode.JSON,
-        decode.ChiRouter,
+    return magic.Decode(r, container,
+        magic.JSON,
+        magic.ChiRouter,
     )
 }
 ```
